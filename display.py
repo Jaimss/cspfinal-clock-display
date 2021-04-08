@@ -1,40 +1,52 @@
 import pygame
 import requests
+from datetime import datetime
 
 
-def display_text(s: str):
-    info = pygame.display.Info()
-    screen = pygame.display.set_mode(
-        (info.current_w, info.current_h), pygame.FULLSCREEN)
-    screen_rect = screen.get_rect()
-    font = pygame.font.Font(None, 45)
-    clock = pygame.time.Clock()
-    color = (000, 000, 000)
-    txt = font.render(s, True, color)
-    timer = 10
-    done = False
+pygame.init()
 
-    while not done:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    done = True
-
-        timer -= 1
-        # Update the text surface and color every 10 frames.
-        if timer <= 0:
-            timer = 10
-            color = (000, 000, 000)
-            txt = font.render(s, True, color)
-
-        screen.fill((30, 30, 30))
-        screen.blit(txt, txt.get_rect(center=screen_rect.center))
-
-        pygame.display.flip()
-        clock.tick(30)
+SIZE = WIDTH, HEIGHT = (1024, 720)
+FPS = 30
+screen = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
+clock = pygame.time.Clock()
 
 
-if __name__ == "__main__":
-    pygame.init()
-    json = requests.get("http://localhost:3000/api/countdowns")
-    display_text("This is my text!")
+def blit_text(surface, text, pos, font, color=pygame.Color('black')):
+    # 2D array where each row is a list of words.
+    words = [word.split(' ') for word in text.splitlines()]
+    space = font.size(' ')[0]  # The width of a space.
+    max_width, max_height = surface.get_size()
+    x, y = pos
+    for line in words:
+        for word in line:
+            word_surface = font.render(word, 0, color)
+            word_width, word_height = word_surface.get_size()
+            if x + word_width >= max_width:
+                x = pos[0]  # Reset the x.
+                y += word_height  # Start on new row.
+            surface.blit(word_surface, (x, y))
+            x += word_width + space
+        x = pos[0]  # Reset the x.
+        y += word_height  # Start on new row.
+
+
+json = requests.get("http://localhost:3000/api/countdowns").json()
+data = {}
+for countdown in json:
+    date = datetime.strptime(f"{countdown['month']}/{countdown['day']}/{countdown['year']} {countdown['hour']}:{countdown['minute']}", "%m/%d/%Y %H:%M")
+    data[countdown['name']] = date
+
+text = str(data['helo world'])
+font = pygame.font.SysFont('Arial', 64)
+
+while True:
+
+    dt = clock.tick(FPS) / 1000
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            quit()
+
+    screen.fill(pygame.Color('white'))
+    blit_text(screen, text, (20, 20), font)
+    pygame.display.update()
